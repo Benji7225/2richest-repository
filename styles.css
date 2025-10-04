@@ -158,7 +158,7 @@ h1 {
   height: 80px;
   border-radius: 50%;
   object-fit: cover;
-  margin-right: 1px;
+  margin-right: 10px;
   border: 0px solid white;
   flex-shrink: 0;
 }
