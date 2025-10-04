@@ -239,7 +239,7 @@ h1 {
 /* Buttons */
 .btn {
   padding: 12px 24px;
-  border-radius: 100px;
+  border-radius: 100px;;
   border: none;
   font-weight: 600;
   font-size: 16px;
@@ -248,24 +248,33 @@ h1 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #ffffff;      /* Texte toujours blanc */
-  background-color: #00c852; /* Fond toujours vert */
+  color: #ffffff;
 }
 
-.btn:hover,
-.btn:active {
-  background-color: #00c852; /* Même fond au hover et actif */
-  color: #ffffff;             /* Même texte */
-  transform: none;            /* Supprime tout effet de translation si tu veux */
+.btn-primary {
+  background-color: var(--primary-color);
+  color: white;
 }
 
-.btn-primary,
+.btn-primary:hover {
+  background-color: #00c852;;
+  transform: translateY(-2px);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+  background-color: #ffffff;
+}
+
 .btn-secondary {
-  background-color: #00c852; /* Fond vert pour tous */
-  color: #ffffff;             /* Texte blanc pour tous */
-  border: none;               /* Supprime bordures si nécessaire */
+  background-color: transparent;
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
 }
 
+.btn-secondary:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
 
 /* Modal */
 .modal {
@@ -429,4 +438,4 @@ h1 {
   .amount {
     font-size: 18px;
   }
-}
+} 
