@@ -120,9 +120,12 @@ async function handleEvent(event: Stripe.Event) {
         console.info(`Successfully processed one-time payment for session: ${checkout_session_id}`);
 
         // If this is a leaderboard payment (has metadata), insert into leaderboard_payments
-        if (metadata && metadata.user_id && metadata.amount_cents) {
+        if (metadata && metadata.user_id && metadata.pseudo && metadata.avatar && metadata.amount_cents) {
           const { error: leaderboardError } = await supabase.from('leaderboard_payments').insert({
             user_id: metadata.user_id,
+            pseudo: metadata.pseudo,
+            avatar: metadata.avatar,
+            phrase: metadata.phrase || '',
             amount_cents: parseInt(metadata.amount_cents),
             checkout_session_id,
           });
