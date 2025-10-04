@@ -94,8 +94,8 @@ h1 {
 .card {
   background: #ff751f;
   border-radius: 100px;
-  padding: 20px 24px;
-  margin-bottom: 1px;
+  padding: 2px 24px;
+  margin-bottom: 12px;
   display: flex;
   align-items: center;
   position: relative;
