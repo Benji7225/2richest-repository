@@ -262,6 +262,7 @@ h1 {
 
 .btn-primary:active {
   transform: translateY(0);
+  background-color: #00c852;
 }
 
 .btn-secondary {
