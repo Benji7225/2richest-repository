@@ -70,6 +70,8 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
   const pseudo = document.getElementById('signup-pseudo').value;
   const email = document.getElementById('signup-email').value;
   const password = document.getElementById('signup-password').value;
+  const avatar = document.getElementById('signup-avatar').value || 'https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=150';
+  const phrase = document.getElementById('signup-phrase').value || '';
 
   try {
     const { data, error } = await supabase.auth.signUp({
@@ -78,10 +80,9 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
       options: {
         data: {
           pseudo,
-          avatar: 'https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=150',
-          phrase: '',
+          avatar,
+          phrase,
         },
-        emailRedirectTo: window.location.origin,
       },
     });
 
@@ -93,7 +94,7 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
     }, 1500);
   } catch (error) {
     console.error('Signup error:', error);
-    showToast(error.message || 'Erreur lors de l\'inscription', 'error');
+    showToast(error.message, 'error');
   }
 });
 
