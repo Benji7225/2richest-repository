@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connexion - The Richest</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="auth-header">
+        <svg class="flame-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M12 2C10 6 8 8 4 12c-2 2 0 6 4 6 2 0 3-1 4-2 1 1 2 2 4 2 4 0 6-4 4-6-4-4-6-6-8-10z" fill="#FF9500" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <h1>The Richest</h1>
+      </div>
+
+      <div class="auth-tabs">
+        <button id="login-tab" class="auth-tab active">Connexion</button>
+        <button id="signup-tab" class="auth-tab">Inscription</button>
+      </div>
+
+      <form id="login-form" class="auth-form">
+        <div class="input-group">
+          <label for="login-email">Email</label>
+          <input type="email" id="login-email" required placeholder="votre@email.com">
+        </div>
+        <div class="input-group">
+          <label for="login-password">Mot de passe</label>
+          <input type="password" id="login-password" required placeholder="••••••••">
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Se connecter</button>
+      </form>
+
+      <form id="signup-form" class="auth-form" style="display: none;">
+        <div class="input-group">
+          <label for="signup-pseudo">Pseudo</label>
+          <input type="text" id="signup-pseudo" required placeholder="Votre pseudo">
+        </div>
+        <div class="input-group">
+          <label for="signup-email">Email</label>
+          <input type="email" id="signup-email" required placeholder="votre@email.com">
+        </div>
+        <div class="input-group">
+          <label for="signup-password">Mot de passe</label>
+          <input type="password" id="signup-password" required placeholder="••••••••" minlength="6">
+        </div>
+        <div class="input-group">
+          <label for="signup-avatar">URL de l'avatar (optionnel)</label>
+          <input type="url" id="signup-avatar" placeholder="https://...">
+        </div>
+        <div class="input-group">
+          <label for="signup-phrase">Phrase personnelle (optionnel)</label>
+          <input type="text" id="signup-phrase" placeholder="Votre devise">
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">S'inscrire</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast">
+    <span id="toast-message"></span>
+  </div>
+
+  <script type="module" src="auth.js"></script>
+</body>
+</html>

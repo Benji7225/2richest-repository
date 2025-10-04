@@ -343,8 +343,32 @@ async function handlePayment() {
   }
 }
 
+// Vérifier l'authentification
+function checkAuth() {
+  const session = JSON.parse(localStorage.getItem('richest:session') || '{}');
+
+  if (!session.token || !session.expires_at) {
+    window.location.href = '/login.html';
+    return false;
+  }
+
+  const expiresAt = new Date(session.expires_at);
+  if (expiresAt < new Date()) {
+    localStorage.removeItem('richest:session');
+    localStorage.removeItem('richest:v1:currentUser');
+    window.location.href = '/login.html';
+    return false;
+  }
+
+  return true;
+}
+
 // Initialisation
 document.addEventListener('DOMContentLoaded', async function() {
+  if (!checkAuth()) {
+    return;
+  }
+
   // Charger l'utilisateur courant
   CurrentUser.loadUser();
 
