@@ -1,66 +1,13 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>The Richest</title>
-  <link rel="stylesheet" href="styles.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-</head>
-<body>
-  <header>
-    <div class="logo">
-      <svg class="flame-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-        <path d="M12 2C10 6 8 8 4 12c-2 2 0 6 4 6 2 0 3-1 4-2 1 1 2 2 4 2 4 0 6-4 4-6-4-4-6-6-8-10z" fill="#FF9500" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      <h1>The Richest</h1>
-    </div>
-    <a href="account.html" class="profile-link">
-      <img id="header-avatar" class="profile-icon" src="https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=150" alt="Profil">
-    </a>
-  </header>
-
-  <main>
-    <section id="leaderboard"></section>
-
-    <section id="my-card-container"></section>
-  </main>
-
-  <!-- Modal de paiement -->
-  <div id="payment-modal" class="modal">
-    <div class="modal-content">
-      <h2>Ajouter un paiement</h2>
-      <div class="input-group">
-        <label for="payment-amount">Montant (€)</label>
-        <input type="number" id="payment-amount" placeholder="0.00" step="0.01" min="0">
-      </div>
-      <div class="modal-actions">
-        <button id="cancel-payment" class="btn btn-secondary">Annuler</button>
-        <button id="confirm-payment" class="btn btn-primary">Confirmer</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Toast de notification -->
-  <div id="toast" class="toast">
-    <span id="toast-message"></span>
-  </div>
-
-  <script type="module" src="app.js"></script>
-  <script>
-    // Mettre à jour l'avatar dans le header
-    const currentUser = JSON.parse(localStorage.getItem('richest:v1:currentUser') || '{}');
-    const urlParams = new URLSearchParams(window.location.search);
-    const avatarParam = urlParams.get('avatar');
-
-    const headerAvatar = document.getElementById('header-avatar');
-    if (avatarParam) {
-      headerAvatar.src = avatarParam;
-    } else if (currentUser.avatar) {
-      headerAvatar.src = currentUser.avatar;
-    }
-  </script>
-</body>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Richest</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
