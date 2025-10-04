@@ -1,23 +1,34 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "npm:@supabase/supabase-js@2.49.1";
-import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
+import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
+import { createClient } from 'npm:@supabase/supabase-js@2.49.1';
+import { encode } from 'npm:@stablelib/base64@1.0.1';
+
+const supabase = createClient(
+  Deno.env.get('SUPABASE_URL')!,
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+);
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': '*',
 };
 
-interface SignupRequest {
-  email: string;
-  password: string;
-  pseudo: string;
-  avatar?: string;
-  phrase?: string;
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
+function generateToken(): string {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return encode(array);
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
     return new Response(null, {
       status: 200,
       headers: corsHeaders,
@@ -25,82 +36,92 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    if (req.method !== 'POST') {
+      return new Response(
+        JSON.stringify({ error: 'Method not allowed' }),
+        {
+          status: 405,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
 
-    const { email, password, pseudo, avatar, phrase }: SignupRequest = await req.json();
+    const { email, password, pseudo } = await req.json();
 
     if (!email || !password || !pseudo) {
       return new Response(
-        JSON.stringify({ error: "Email, mot de passe et pseudo requis" }),
+        JSON.stringify({ error: 'Email, password, and pseudo are required' }),
         {
           status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
     }
 
-    if (password.length < 6) {
-      return new Response(
-        JSON.stringify({ error: "Le mot de passe doit contenir au moins 6 caractères" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
+    // Check if user already exists
     const { data: existingUser } = await supabase
-      .from("users")
-      .select("id")
-      .eq("email", email)
+      .from('users')
+      .select('id')
+      .eq('email', email)
       .maybeSingle();
 
     if (existingUser) {
       return new Response(
-        JSON.stringify({ error: "Cet email est déjà utilisé" }),
+        JSON.stringify({ error: 'User already exists' }),
         {
           status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
     }
 
-    const passwordHash = await bcrypt.hash(password);
+    // Hash password
+    const passwordHash = await hashPassword(password);
 
+    // Create user
     const { data: user, error: userError } = await supabase
-      .from("users")
+      .from('users')
       .insert({
         email,
         password_hash: passwordHash,
         pseudo,
-        avatar: avatar || "https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=150",
-        phrase: phrase || "",
       })
       .select()
       .single();
 
-    if (userError) {
-      throw userError;
+    if (userError || !user) {
+      console.error('Error creating user:', userError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to create user' }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
-    const token = crypto.randomUUID();
+    // Create session
+    const token = generateToken();
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30);
+    expiresAt.setDate(expiresAt.getDate() + 30); // 30 days
 
-    const { data: session, error: sessionError } = await supabase
-      .from("sessions")
+    const { error: sessionError } = await supabase
+      .from('sessions')
       .insert({
         user_id: user.id,
         token,
         expires_at: expiresAt.toISOString(),
-      })
-      .select()
-      .single();
+      });
 
     if (sessionError) {
-      throw sessionError;
+      console.error('Error creating session:', sessionError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to create session' }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     return new Response(
@@ -112,23 +133,20 @@ Deno.serve(async (req: Request) => {
           avatar: user.avatar,
           phrase: user.phrase,
         },
-        session: {
-          token: session.token,
-          expires_at: session.expires_at,
-        },
+        token,
       }),
       {
         status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
-  } catch (error) {
-    console.error("Signup error:", error);
+  } catch (error: any) {
+    console.error('Signup error:', error);
     return new Response(
-      JSON.stringify({ error: error.message || "Erreur lors de l'inscription" }),
+      JSON.stringify({ error: error.message }),
       {
         status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
   }

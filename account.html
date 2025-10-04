@@ -229,18 +229,11 @@
     <div class="profile-container">
       <h3>Données</h3>
       <p style="margin-bottom: 16px;">Exportez vos données pour les sauvegarder ou les transférer.</p>
-
+      
       <div class="actions">
         <button id="export-button" class="btn btn-secondary">Exporter JSON</button>
         <button id="import-button" class="btn btn-secondary">Importer JSON</button>
       </div>
-    </div>
-
-    <div class="profile-container">
-      <h3>Compte</h3>
-      <p style="margin-bottom: 16px;">Gérez votre compte et votre session.</p>
-
-      <button id="logout-button" class="btn btn-secondary" style="width: 100%;">Se déconnecter</button>
     </div>
   </main>
   
@@ -302,33 +295,11 @@
   </div>
   
   <script type="module">
-    function checkAuth() {
-      const session = JSON.parse(localStorage.getItem('richest:session') || '{}');
+    import { getStorageKey } from './app.js';
+    
 
-      if (!session.token || !session.expires_at) {
-        window.location.href = '/login.html';
-        return false;
-      }
 
-      const expiresAt = new Date(session.expires_at);
-      if (expiresAt < new Date()) {
-        localStorage.removeItem('richest:session');
-        localStorage.removeItem('richest:v1:currentUser');
-        window.location.href = '/login.html';
-        return false;
-      }
-
-      return true;
-    }
-
-    function logout() {
-      if (confirm('Voulez-vous vraiment vous déconnecter ?')) {
-        localStorage.removeItem('richest:session');
-        localStorage.removeItem('richest:v1:currentUser');
-        window.location.href = '/login.html';
-      }
-    }
-
+    
     // Fonction pour afficher un toast
     function showToast(message, type = 'success') {
       const toast = document.getElementById('toast');
@@ -360,7 +331,7 @@
         
         // Mettre à jour l'avatar
         const avatarLarge = document.getElementById('profile-avatar-large');
-        avatarLarge.src = userData.avatar || 'https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=150';
+        avatarLarge.src = userData.avatar || galleryAvatars[0];
       } catch (error) {
         console.error('Erreur lors du chargement des données utilisateur:', error);
       }
@@ -408,9 +379,24 @@
       }
     }
     
+    // Mettre à jour l'utilisateur dans le classement
     function updateLeaderboardUser() {
-      // Cette fonction est conservée pour compatibilité mais n'est plus nécessaire
-      // Les données utilisateur sont maintenant gérées par Supabase
+      try {
+        const storageKey = getStorageKey();
+        const leaderboardData = JSON.parse(localStorage.getItem(storageKey) || '{}');
+        
+        if (leaderboardData.users && leaderboardData.users.me) {
+          const userData = JSON.parse(localStorage.getItem('richest:v1:currentUser') || '{}');
+          
+          leaderboardData.users.me.pseudo = userData.pseudo || 'Moi';
+          leaderboardData.users.me.avatar = userData.avatar || galleryAvatars[0];
+          leaderboardData.users.me.phrase = userData.phrase || '';
+          
+          localStorage.setItem(storageKey, JSON.stringify(leaderboardData));
+        }
+      } catch (error) {
+        console.error('Erreur lors de la mise à jour du classement:', error);
+      }
     }
     
     // Réinitialiser le profil
@@ -505,33 +491,84 @@
       if (url) {
         preview.src = url;
       } else {
-        preview.src = 'https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=150';
+        preview.src = galleryAvatars[0];
       }
     }
     
+    // Exporter les données
     function exportData() {
-      showToast('Fonctionnalité temporairement indisponible', 'error');
+      try {
+        const storageKey = getStorageKey();
+        const data = localStorage.getItem(storageKey);
+        
+        if (!data) {
+          showToast('Aucune donnée à exporter', 'error');
+          return;
+        }
+        
+        // Créer un élément de lien pour le téléchargement
+        const element = document.createElement('a');
+        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(data));
+        element.setAttribute('download', `the-richest-${storageKey.split(':').pop()}.json`);
+        
+        element.style.display = 'none';
+        document.body.appendChild(element);
+        
+        element.click();
+        
+        document.body.removeChild(element);
+        showToast('Données exportées avec succès');
+      } catch (error) {
+        console.error('Erreur lors de l\'export:', error);
+        showToast('Erreur lors de l\'export des données', 'error');
+      }
     }
-
+    
+    // Ouvrir le modal d'import
     function openImportModal() {
-      showToast('Fonctionnalité temporairement indisponible', 'error');
+      const modal = document.getElementById('import-modal');
+      modal.style.display = 'flex';
+      document.getElementById('import-data').value = '';
     }
-
+    
+    // Fermer le modal d'import
     function closeImportModal() {
       const modal = document.getElementById('import-modal');
       modal.style.display = 'none';
     }
-
+    
+    // Importer les données
     function importData() {
-      showToast('Fonctionnalité temporairement indisponible', 'error');
+      try {
+        const jsonData = document.getElementById('import-data').value.trim();
+        
+        if (!jsonData) {
+          showToast('Veuillez entrer des données JSON valides', 'error');
+          return;
+        }
+        
+        // Valider le JSON
+        const data = JSON.parse(jsonData);
+        
+        if (!data.users) {
+          showToast('Format de données invalide', 'error');
+          return;
+        }
+        
+        // Sauvegarder les données
+        const storageKey = getStorageKey();
+        localStorage.setItem(storageKey, jsonData);
+        
+        closeImportModal();
+        showToast('Données importées avec succès');
+      } catch (error) {
+        console.error('Erreur lors de l\'import:', error);
+        showToast('Erreur lors de l\'import des données: ' + error.message, 'error');
+      }
     }
     
     // Initialisation
     document.addEventListener('DOMContentLoaded', function() {
-      if (!checkAuth()) {
-        return;
-      }
-
       // Charger les données utilisateur
       loadUserData();
       
@@ -555,9 +592,6 @@
       document.getElementById('import-button').addEventListener('click', openImportModal);
       document.getElementById('cancel-import').addEventListener('click', closeImportModal);
       document.getElementById('confirm-import').addEventListener('click', importData);
-
-      // Événement de déconnexion
-      document.getElementById('logout-button').addEventListener('click', logout);
     });
   </script>
 </body>

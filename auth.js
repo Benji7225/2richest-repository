@@ -19,104 +19,102 @@ function showToast(message, type = 'success') {
   }, 3000);
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-  const loginTab = document.getElementById('login-tab');
-  const signupTab = document.getElementById('signup-tab');
-  const loginForm = document.getElementById('login-form');
-  const signupForm = document.getElementById('signup-form');
-
-  loginTab.addEventListener('click', function() {
-    loginTab.classList.add('active');
-    signupTab.classList.remove('active');
-    loginForm.style.display = 'block';
-    signupForm.style.display = 'none';
-  });
-
-  signupTab.addEventListener('click', function() {
-    signupTab.classList.add('active');
-    loginTab.classList.remove('active');
-    signupForm.style.display = 'block';
-    loginForm.style.display = 'none';
-  });
-
-  loginForm.addEventListener('submit', async function(e) {
-    e.preventDefault();
-
-    const email = document.getElementById('login-email').value;
-    const password = document.getElementById('login-password').value;
-
-    try {
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/auth-login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erreur lors de la connexion');
-      }
-
-      localStorage.setItem('richest:session', JSON.stringify(data.session));
-      localStorage.setItem('richest:v1:currentUser', JSON.stringify({
-        id: data.user.id,
-        pseudo: data.user.pseudo,
-        avatar: data.user.avatar,
-        phrase: data.user.phrase,
-      }));
-
-      showToast('Connexion réussie');
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 1000);
-    } catch (error) {
-      console.error('Login error:', error);
-      showToast(error.message, 'error');
-    }
-  });
-
-  signupForm.addEventListener('submit', async function(e) {
-    e.preventDefault();
-
-    const pseudo = document.getElementById('signup-pseudo').value;
-    const email = document.getElementById('signup-email').value;
-    const password = document.getElementById('signup-password').value;
-    const avatar = document.getElementById('signup-avatar').value || 'https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=150';
-    const phrase = document.getElementById('signup-phrase').value || '';
-
-    try {
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/auth-signup`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password, pseudo, avatar, phrase }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erreur lors de l\'inscription');
-      }
-
-      localStorage.setItem('richest:session', JSON.stringify(data.session));
-      localStorage.setItem('richest:v1:currentUser', JSON.stringify({
-        id: data.user.id,
-        pseudo: data.user.pseudo,
-        avatar: data.user.avatar,
-        phrase: data.user.phrase,
-      }));
-
-      showToast('Inscription réussie');
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 1000);
-    } catch (error) {
-      console.error('Signup error:', error);
-      showToast(error.message, 'error');
-    }
-  });
+// Tab switching
+document.getElementById('tab-login').addEventListener('click', () => {
+  document.getElementById('tab-login').classList.add('active');
+  document.getElementById('tab-signup').classList.remove('active');
+  document.getElementById('login-form').style.display = 'block';
+  document.getElementById('signup-form').style.display = 'none';
 });
+
+document.getElementById('tab-signup').addEventListener('click', () => {
+  document.getElementById('tab-signup').classList.add('active');
+  document.getElementById('tab-login').classList.remove('active');
+  document.getElementById('signup-form').style.display = 'block';
+  document.getElementById('login-form').style.display = 'none';
+});
+
+// Login form
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const email = document.getElementById('login-email').value;
+  const password = document.getElementById('login-password').value;
+
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/auth-login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'apikey': SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Login failed');
+    }
+
+    // Store token and user
+    localStorage.setItem('auth_token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+
+    showToast('Connexion réussie !');
+    setTimeout(() => {
+      window.location.href = '/';
+    }, 1000);
+  } catch (error) {
+    console.error('Login error:', error);
+    showToast(error.message, 'error');
+  }
+});
+
+// Signup form
+document.getElementById('signup-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const pseudo = document.getElementById('signup-pseudo').value;
+  const email = document.getElementById('signup-email').value;
+  const password = document.getElementById('signup-password').value;
+
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/auth-signup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'apikey': SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ email, password, pseudo }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Signup failed');
+    }
+
+    // Store token and user
+    localStorage.setItem('auth_token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+
+    showToast('Inscription réussie ! Connexion...');
+    setTimeout(() => {
+      window.location.href = '/';
+    }, 1500);
+  } catch (error) {
+    console.error('Signup error:', error);
+    showToast(error.message || 'Erreur lors de l\'inscription', 'error');
+  }
+});
+
+// Check if already logged in
+(() => {
+  const token = localStorage.getItem('auth_token');
+  if (token) {
+    window.location.href = '/';
+  }
+})();

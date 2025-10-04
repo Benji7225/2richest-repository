@@ -1,20 +1,34 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "npm:@supabase/supabase-js@2.49.1";
-import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
+import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
+import { createClient } from 'npm:@supabase/supabase-js@2.49.1';
+import { encode } from 'npm:@stablelib/base64@1.0.1';
+
+const supabase = createClient(
+  Deno.env.get('SUPABASE_URL')!,
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+);
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': '*',
 };
 
-interface LoginRequest {
-  email: string;
-  password: string;
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
+function generateToken(): string {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return encode(array);
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
     return new Response(null, {
       status: 200,
       headers: corsHeaders,
@@ -22,66 +36,71 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    const { email, password }: LoginRequest = await req.json();
-
-    if (!email || !password) {
+    if (req.method !== 'POST') {
       return new Response(
-        JSON.stringify({ error: "Email et mot de passe requis" }),
+        JSON.stringify({ error: 'Method not allowed' }),
         {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 405,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
     }
 
+    const { email, password } = await req.json();
+
+    if (!email || !password) {
+      return new Response(
+        JSON.stringify({ error: 'Email and password are required' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    // Hash password
+    const passwordHash = await hashPassword(password);
+
+    // Find user
     const { data: user, error: userError } = await supabase
-      .from("users")
-      .select("*")
-      .eq("email", email)
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .eq('password_hash', passwordHash)
       .maybeSingle();
 
     if (userError || !user) {
       return new Response(
-        JSON.stringify({ error: "Email ou mot de passe incorrect" }),
+        JSON.stringify({ error: 'Invalid email or password' }),
         {
           status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
     }
 
-    const passwordMatch = await bcrypt.compare(password, user.password_hash);
-
-    if (!passwordMatch) {
-      return new Response(
-        JSON.stringify({ error: "Email ou mot de passe incorrect" }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    const token = crypto.randomUUID();
+    // Create session
+    const token = generateToken();
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30);
+    expiresAt.setDate(expiresAt.getDate() + 30); // 30 days
 
-    const { data: session, error: sessionError } = await supabase
-      .from("sessions")
+    const { error: sessionError } = await supabase
+      .from('sessions')
       .insert({
         user_id: user.id,
         token,
         expires_at: expiresAt.toISOString(),
-      })
-      .select()
-      .single();
+      });
 
     if (sessionError) {
-      throw sessionError;
+      console.error('Error creating session:', sessionError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to create session' }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     return new Response(
@@ -93,23 +112,20 @@ Deno.serve(async (req: Request) => {
           avatar: user.avatar,
           phrase: user.phrase,
         },
-        session: {
-          token: session.token,
-          expires_at: session.expires_at,
-        },
+        token,
       }),
       {
         status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
-  } catch (error) {
-    console.error("Login error:", error);
+  } catch (error: any) {
+    console.error('Login error:', error);
     return new Response(
-      JSON.stringify({ error: error.message || "Erreur lors de la connexion" }),
+      JSON.stringify({ error: error.message }),
       {
         status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
   }
