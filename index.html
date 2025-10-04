@@ -47,5 +47,17 @@
   </div>
 
   <script type="module" src="app.js"></script>
+  <script>
+    const currentUser = JSON.parse(localStorage.getItem('richest:v1:currentUser') || '{}');
+    const urlParams = new URLSearchParams(window.location.search);
+    const avatarParam = urlParams.get('avatar');
+
+    const headerAvatar = document.getElementById('header-avatar');
+    if (avatarParam) {
+      headerAvatar.src = avatarParam;
+    } else if (currentUser.avatar) {
+      headerAvatar.src = currentUser.avatar;
+    }
+  </script>
 </body>
 </html>
