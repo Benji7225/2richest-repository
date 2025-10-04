@@ -1,9 +1,5 @@
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-
 const SUPABASE_URL = 'https://0ec90b57d6e95fcbda19832f.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJib2x0IiwicmVmIjoiMGVjOTBiNTdkNmU5NWZjYmRhMTk4MzJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4ODE1NzQsImV4cCI6MTc1ODg4MTU3NH0.9I8-U0x86Ak8t2DGaIk0HfvTSLsAyzdnz-Nw00mMkKw';
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 function showToast(message, type = 'success') {
   const toast = document.getElementById('toast');
@@ -46,12 +42,24 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
   const password = document.getElementById('login-password').value;
 
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/auth-login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ email, password }),
     });
 
-    if (error) throw error;
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Login failed');
+    }
+
+    // Store token and user
+    localStorage.setItem('auth_token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
 
     showToast('Connexion réussie !');
     setTimeout(() => {
@@ -72,20 +80,24 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
   const password = document.getElementById('signup-password').value;
 
   try {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          pseudo,
-          avatar: 'https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=150',
-          phrase: '',
-        },
-        emailRedirectTo: window.location.origin,
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/auth-signup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
       },
+      body: JSON.stringify({ email, password, pseudo }),
     });
 
-    if (error) throw error;
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Signup failed');
+    }
+
+    // Store token and user
+    localStorage.setItem('auth_token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
 
     showToast('Inscription réussie ! Connexion...');
     setTimeout(() => {
@@ -98,9 +110,9 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
 });
 
 // Check if already logged in
-(async () => {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session) {
+(() => {
+  const token = localStorage.getItem('auth_token');
+  if (token) {
     window.location.href = '/';
   }
 })();
