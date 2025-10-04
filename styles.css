@@ -221,20 +221,23 @@ h1 {
 }
 
 .pay-button {
+  background-color: #00c852 !important; /* Fond vert */
+  color: #ffffff !important; /* Texte blanc */
   min-width: 200px;
   padding: 16px 48px;
   font-size: 20px;
   font-weight: 700;
   border-radius: 100px;
-  background: #00c852; /* Fond vert */
   box-shadow: 0 4px 20px rgba(0, 200, 82, 0.4);
-  color: #ffffff; /* Texte blanc */
+  transition: transform 0.2s ease;
 }
 
 .pay-button:hover {
-  color: #ffffff; /* Texte reste blanc au survol */
+  background-color: #00c852 !important; /* Fond vert au hover */
+  color: #ffffff !important; /* Texte blanc au hover */
   transform: scale(1.05);
 }
+
 
 /* Buttons */
 .btn {
