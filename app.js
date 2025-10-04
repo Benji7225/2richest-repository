@@ -330,23 +330,34 @@ function renderLeaderboard() {
 function createUserCard(user, rank, isCurrentUser) {
   const card = document.createElement('div');
   card.className = `card ${isCurrentUser ? 'card-me' : ''}`;
-
+  
+  // Badge de rang
+  const rankBadge = document.createElement('div');
+  rankBadge.className = 'card-rank';
+  rankBadge.textContent = rank <= 3 ? `${rank}${getRankSuffix(rank)}` : `${rank}e`;
+  card.appendChild(rankBadge);
+  
   // Avatar
   const avatar = document.createElement('img');
   avatar.className = 'avatar';
   avatar.src = user.avatar || 'https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=150';
   avatar.alt = user.pseudo || 'Utilisateur';
   card.appendChild(avatar);
-
+  
   // Informations utilisateur
   const userInfo = document.createElement('div');
   userInfo.className = 'user-info';
-
+  
   const username = document.createElement('div');
   username.className = 'username';
   username.textContent = user.pseudo || 'Utilisateur';
   userInfo.appendChild(username);
-
+  
+  const subtitle = document.createElement('div');
+  subtitle.className = 'subtitle';
+  subtitle.textContent = isCurrentUser ? 'Vous' : 'Participant';
+  userInfo.appendChild(subtitle);
+  
   // Phrase personnelle
   if (user.phrase) {
     const phrase = document.createElement('div');
@@ -354,21 +365,15 @@ function createUserCard(user, rank, isCurrentUser) {
     phrase.textContent = user.phrase;
     userInfo.appendChild(phrase);
   }
-
+  
   card.appendChild(userInfo);
-
+  
   // Montant
   const amount = document.createElement('div');
   amount.className = 'amount';
   amount.textContent = euro(user.totalCents || 0);
   card.appendChild(amount);
-
-  // Badge de rang
-  const rankBadge = document.createElement('div');
-  rankBadge.className = 'card-rank';
-  rankBadge.textContent = rank <= 3 ? `${rank}${getRankSuffix(rank)}` : `${rank}e`;
-  card.appendChild(rankBadge);
-
+  
   return card;
 }
 
