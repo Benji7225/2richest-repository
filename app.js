@@ -1,30 +1,34 @@
 /**
  * The Richest - Application de classement des plus riches
- * 
+ *
  * Cette application permet de suivre les montants payés par différents utilisateurs
  * et affiche un classement des 3 premiers, ainsi que la position de l'utilisateur courant.
  */
 
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+const SUPABASE_URL = 'https://0ec90b57d6e95fcbda19832f.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJib2x0IiwicmVmIjoiMGVjOTBiNTdkNmU5NWZjYmRhMTk4MzJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4ODE1NzQsImV4cCI6MTc1ODg4MTU3NH0.9I8-U0x86Ak8t2DGaIk0HfvTSLsAyzdnz-Nw00mMkKw';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 // Module principal pour la gestion du classement
 const Leaderboard = (function() {
-  const SUPABASE_URL = 'https://0ec90b57d6e95fcbda19832f.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJib2x0IiwicmVmIjoiMGVjOTBiNTdkNmU5NWZjYmRhMTk4MzJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4ODE1NzQsImV4cCI6MTc1ODg4MTU3NH0.9I8-U0x86Ak8t2DGaIk0HfvTSLsAyzdnz-Nw00mMkKw';
-
-  // Charge les paiements depuis Supabase
+  // Charge les paiements depuis Supabase avec les profils
   async function loadPayments() {
     try {
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/leaderboard_payments?select=*`, {
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-      });
+      const { data: payments, error } = await supabase
+        .from('leaderboard_payments')
+        .select(`
+          *,
+          profiles (
+            pseudo,
+            avatar,
+            phrase
+          )
+        `);
 
-      if (!response.ok) {
-        throw new Error('Erreur lors du chargement des paiements');
-      }
-
-      const payments = await response.json();
+      if (error) throw error;
 
       // Agréger les paiements par utilisateur
       const usersMap = {};
@@ -33,9 +37,9 @@ const Leaderboard = (function() {
         if (!usersMap[payment.user_id]) {
           usersMap[payment.user_id] = {
             id: payment.user_id,
-            pseudo: payment.pseudo,
-            avatar: payment.avatar,
-            phrase: payment.phrase,
+            pseudo: payment.profiles?.pseudo || 'Utilisateur',
+            avatar: payment.profiles?.avatar || 'https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=150',
+            phrase: payment.profiles?.phrase || '',
             totalCents: 0,
             firstPaymentAt: payment.created_at,
             payments: []
@@ -99,54 +103,64 @@ const Leaderboard = (function() {
 
 // Module pour la gestion de l'utilisateur courant
 const CurrentUser = (function() {
-  const defaultUser = {
-    id: 'me',
-    pseudo: 'Moi',
-    avatar: 'https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=150',
-    phrase: ''
-  };
+  let currentUser = null;
 
-  // Charge les informations de l'utilisateur
-  function loadUser() {
+  // Charge les informations de l'utilisateur depuis Supabase
+  async function loadUser() {
     try {
-      // Vérifier les paramètres d'URL
-      const urlParams = new URLSearchParams(window.location.search);
-      const pseudoParam = urlParams.get('pseudo');
-      const avatarParam = urlParams.get('avatar');
-      const phraseParam = urlParams.get('phrase');
-      
-      // Récupérer les données stockées
-      const storedUser = JSON.parse(localStorage.getItem('richest:v1:currentUser') || '{}');
-      
-      // Fusionner les données
-      const user = {
-        ...defaultUser,
-        ...storedUser
+      const { data: { session }, error } = await supabase.auth.getSession();
+
+      if (error) throw error;
+
+      if (!session) {
+        window.location.href = '/auth.html';
+        return null;
+      }
+
+      // Récupérer le profil
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+
+      if (profileError) throw profileError;
+
+      currentUser = {
+        id: session.user.id,
+        email: session.user.email,
+        pseudo: profile.pseudo,
+        avatar: profile.avatar,
+        phrase: profile.phrase
       };
-      
-      // Priorité aux paramètres d'URL
-      if (pseudoParam) user.pseudo = pseudoParam;
-      if (avatarParam) user.avatar = avatarParam;
-      if (phraseParam) user.phrase = phraseParam;
-      
-      // Sauvegarder les modifications
-      saveUser(user);
-      
-      return user;
+
+      return currentUser;
     } catch (error) {
       console.error('Erreur lors du chargement de l\'utilisateur:', error);
-      return defaultUser;
+      return null;
     }
   }
 
-  // Sauvegarde les informations de l'utilisateur
-  function saveUser(user) {
-    localStorage.setItem('richest:v1:currentUser', JSON.stringify(user));
+  // Déconnexion
+  async function logout() {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      window.location.href = '/auth.html';
+    } catch (error) {
+      console.error('Erreur lors de la déconnexion:', error);
+    }
+  }
+
+  // Récupère l'utilisateur courant
+  function getUser() {
+    return currentUser;
   }
 
   return {
     loadUser,
-    saveUser
+    logout,
+    getUser
   };
 })();
 
@@ -187,7 +201,10 @@ async function renderLeaderboard() {
 
   // Récupérer les données
   const top3 = await Leaderboard.getTop3();
-  const currentUser = CurrentUser.loadUser();
+  const currentUser = CurrentUser.getUser();
+
+  if (!currentUser) return;
+
   const myRank = await Leaderboard.getRank(currentUser.id);
 
   // Récupérer les données de l'utilisateur courant
@@ -303,23 +320,27 @@ async function handlePayment() {
 
   try {
     const amountCents = Math.round(amountValue * 100);
-    const currentUser = CurrentUser.loadUser();
+    const currentUser = CurrentUser.getUser();
+
+    if (!currentUser) {
+      showToast('Vous devez être connecté', 'error');
+      return;
+    }
 
     closePaymentModal();
     showToast('Redirection vers le paiement...');
 
-    const supabaseUrl = 'https://0ec90b57d6e95fcbda19832f.supabase.co';
-    const response = await fetch(`${supabaseUrl}/functions/v1/richest-checkout`, {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/richest-checkout`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
       },
       body: JSON.stringify({
         amount: amountCents,
         user_id: currentUser.id,
-        pseudo: currentUser.pseudo,
-        avatar: currentUser.avatar,
-        phrase: currentUser.phrase,
         success_url: window.location.origin + '/',
         cancel_url: window.location.origin + '/',
       }),
@@ -346,7 +367,15 @@ async function handlePayment() {
 // Initialisation
 document.addEventListener('DOMContentLoaded', async function() {
   // Charger l'utilisateur courant
-  CurrentUser.loadUser();
+  const user = await CurrentUser.loadUser();
+
+  if (!user) return;
+
+  // Mettre à jour l'avatar dans le header
+  const headerAvatar = document.getElementById('header-avatar');
+  if (headerAvatar && user.avatar) {
+    headerAvatar.src = user.avatar;
+  }
 
   // Afficher le classement
   await renderLeaderboard();
