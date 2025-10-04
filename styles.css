@@ -419,26 +419,68 @@ h1 {
   color: var(--text-secondary);
 }
 
+/* Auth Styles */
+.auth-container {
+  background-color: var(--surface-color);
+  border-radius: var(--card-radius);
+  padding: 32px;
+  box-shadow: var(--shadow);
+  margin-top: 120px;
+}
+
+.auth-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 12px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.auth-tab.active {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+}
+
+.auth-form h2 {
+  margin-bottom: 24px;
+  text-align: center;
+}
+
 /* Responsive */
 @media (max-width: 480px) {
   body {
     padding: 12px;
   }
-  
+
   .card {
     padding: 12px;
   }
-  
+
   .avatar {
     width: 48px;
     height: 48px;
   }
-  
+
   .username {
     font-size: 16px;
   }
-  
+
   .amount {
     font-size: 18px;
+  }
+
+  .auth-container {
+    padding: 24px;
   }
 } 

@@ -98,6 +98,7 @@ async function handleEvent(event: Stripe.Event) {
           amount_subtotal,
           amount_total,
           currency,
+          metadata,
         } = stripeData as Stripe.Checkout.Session;
 
         // Insert the order into the stripe_orders table
@@ -109,7 +110,7 @@ async function handleEvent(event: Stripe.Event) {
           amount_total,
           currency,
           payment_status,
-          status: 'completed', // assuming we want to mark it as completed since payment is successful
+          status: 'completed',
         });
 
         if (orderError) {
@@ -117,6 +118,21 @@ async function handleEvent(event: Stripe.Event) {
           return;
         }
         console.info(`Successfully processed one-time payment for session: ${checkout_session_id}`);
+
+        // If this is a leaderboard payment (has metadata), insert into leaderboard_payments
+        if (metadata && metadata.user_id && metadata.amount_cents) {
+          const { error: leaderboardError } = await supabase.from('leaderboard_payments').insert({
+            user_id: metadata.user_id,
+            amount_cents: parseInt(metadata.amount_cents),
+            checkout_session_id,
+          });
+
+          if (leaderboardError) {
+            console.error('Error inserting leaderboard payment:', leaderboardError);
+          } else {
+            console.info(`Successfully added leaderboard payment for user ${metadata.user_id}`);
+          }
+        }
       } catch (error) {
         console.error('Error processing one-time payment:', error);
       }
