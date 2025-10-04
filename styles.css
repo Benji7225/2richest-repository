@@ -208,7 +208,7 @@ h1 {
 /* Payment Button */
 .pay-button-container {
   position: fixed;
-  bottom: 0;
+  bottom: 100;
   left: 0;
   right: 0;
   display: flex;
