@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paiement réussi - The Richest</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .success-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px 20px;
+    }
+    
+    .success-icon {
+      width: 80px;
+      height: 80px;
+      background-color: var(--success-color);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+    
+    .success-icon svg {
+      width: 40px;
+      height: 40px;
+      fill: white;
+    }
+    
+    .success-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+    
+    .success-message {
+      font-size: 16px;
+      color: var(--text-secondary);
+      margin-bottom: 32px;
+      max-width: 400px;
+    }
+    
+    .success-amount {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--primary-color);
+      margin-bottom: 32px;
+    }
+    
+    .redirect-message {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <svg class="flame-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2C10.9 2 9.9 2.2 8.9 2.6C9.5 3.3 9.9 4.2 9.9 5.1C9.9 7.5 7.9 9.5 5.5 9.5C4.6 9.5 3.7 9.2 3 8.6C2.6 9.6 2.4 10.7 2.4 11.7C2.4 16.8 6.7 21 11.8 21C16.9 21 21.2 16.7 21.2 11.6C21.3 6.2 17.1 2 12 2ZM10.4 16.8C9.1 16.8 8 15.7 8 14.4C8 13.3 8.7 12.4 9.7 12.1C11.5 11.6 13 10.1 13.5 8.3C13.8 9.3 14.7 10 15.8 10C17.1 10 18.2 11.1 18.2 12.4C18.2 15 14.6 16.8 10.4 16.8Z" fill="#FF9500"/>
+      </svg>
+      <h1>The Richest</h1>
+    </div>
+  </header>
+
+  <main>
+    <div class="success-container">
+      <div class="success-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+        </svg>
+      </div>
+      
+      <h2 class="success-title">Paiement réussi !</h2>
+      
+      <p class="success-message">Votre paiement a été traité avec succès et a été ajouté à votre total.</p>
+      
+      <div class="success-amount" id="payment-amount">10,00 €</div>
+      
+      <a href="index.html" class="btn btn-primary">Retour au classement</a>
+      
+      <p class="redirect-message">Vous serez redirigé automatiquement dans <span id="countdown">5</span> secondes...</p>
+    </div>
+  </main>
+  
+  <script type="module">
+    import { getStorageKey } from './app.js';
+    
+    document.addEventListener('DOMContentLoaded', function() {
+      // Récupérer les paramètres d'URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const sessionId = urlParams.get('session_id');
+      const amount = urlParams.get('amount');
+      
+      if (sessionId && amount) {
+        // Formater le montant
+        const amountCents = parseInt(amount, 10);
+        const formattedAmount = new Intl.NumberFormat('fr-FR', {
+          style: 'currency',
+          currency: 'EUR'
+        }).format(amountCents / 100);
+        
+        // Afficher le montant
+        document.getElementById('payment-amount').textContent = formattedAmount;
+        
+        // Ajouter le paiement au classement
+        const currentUser = loadUser();
+        addPayment(currentUser.id, amountCents);
+      }
+      
+      // Compte à rebours
+      let countdown = 5;
+      const countdownElement = document.getElementById('countdown');
+      
+      const interval = setInterval(function() {
+        countdown--;
+        countdownElement.textContent = countdown;
+        
+        if (countdown <= 0) {
+          clearInterval(interval);
+          window.location.href = 'index.html';
+        }
+      }, 1000);
+    });
+    
+    // Fonction pour charger l'utilisateur
+    function loadUser() {
+      try {
+        return JSON.parse(localStorage.getItem('richest:v1:currentUser') || '{"id":"me","pseudo":"Moi"}');
+      } catch (error) {
+        console.error('Erreur lors du chargement de l\'utilisateur:', error);
+        return { id: 'me', pseudo: 'Moi' };
+      }
+    }
+    
+    // Fonction pour ajouter un paiement
+    function addPayment(userId, amountCents) {
+      try {
+        const storageKey = getStorageKey();
+        let state = JSON.parse(localStorage.getItem(storageKey) || '{"users":{},"createdAt":"","updatedAt":""}');
+        
+        // Si l'utilisateur n'existe pas, le créer
+        if (!state.users[userId]) {
+          const currentUser = loadUser();
+          state.users[userId] = {
+            id: userId,
+            pseudo: currentUser.pseudo,
+            avatar: currentUser.avatar,
+            phrase: currentUser.phrase,
+            totalCents: 0,
+            payments: [],
+            firstPaymentAt: new Date().toISOString()
+          };
+        }
+        
+        // Ajouter le paiement
+        state.users[userId].payments.push({
+          amountCents,
+          createdAt: new Date().toISOString()
+        });
+        
+        // Mettre à jour le total
+        state.users[userId].totalCents += amountCents;
+        
+        // Mettre à jour les dates
+        state.updatedAt = new Date().toISOString();
+        if (!state.createdAt) {
+          state.createdAt = new Date().toISOString();
+        }
+        
+        // Sauvegarder
+        localStorage.setItem(storageKey, JSON.stringify(state));
+      } catch (error) {
+        console.error('Erreur lors de l\'ajout du paiement:', error);
+      }
+    }
+  </script>
+</body>
+</html>
