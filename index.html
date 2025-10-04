@@ -18,7 +18,12 @@
       <h1>The Richest</h1>
     </div>
     <a href="account.html" class="profile-link">
-      <img id="header-avatar" class="profile-icon" src="https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=150" alt="Profil">
+      <div id="header-avatar" class="profile-icon">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="8" r="4" fill="#666"/>
+          <path d="M4 20c0-4 3-6 8-6s8 2 8 6" fill="#666"/>
+        </svg>
+      </div>
     </a>
   </header>
 
@@ -49,18 +54,5 @@
   </div>
 
   <script type="module" src="app.js"></script>
-  <script>
-    // Mettre à jour l'avatar dans le header
-    const currentUser = JSON.parse(localStorage.getItem('richest:v1:currentUser') || '{}');
-    const urlParams = new URLSearchParams(window.location.search);
-    const avatarParam = urlParams.get('avatar');
-
-    const headerAvatar = document.getElementById('header-avatar');
-    if (avatarParam) {
-      headerAvatar.src = avatarParam;
-    } else if (currentUser.avatar) {
-      headerAvatar.src = currentUser.avatar;
-    }
-  </script>
 </body>
 </html>
