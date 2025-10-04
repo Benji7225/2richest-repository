@@ -7,69 +7,133 @@
 
 // Module principal pour la gestion du classement
 const Leaderboard = (function() {
-  const SUPABASE_URL = 'https://0ec90b57d6e95fcbda19832f.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJib2x0IiwicmVmIjoiMGVjOTBiNTdkNmU5NWZjYmRhMTk4MzJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4ODE1NzQsImV4cCI6MTc1ODg4MTU3NH0.9I8-U0x86Ak8t2DGaIk0HfvTSLsAyzdnz-Nw00mMkKw';
+  // Clé de stockage dans localStorage
+  const getStorageKey = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    return `richest:v1:season:${year}-${month}`;
+  };
 
-  // Charge les paiements depuis Supabase
-  async function loadPayments() {
+  // Utilisateurs initiaux pour le top 3
+  const initialUsers = {
+    'user1': {
+      id: 'user1',
+      pseudo: 'Sophie',
+      avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150',
+      totalCents: 15000,
+      payments: [
+        { amountCents: 15000, createdAt: new Date(Date.now() - 86400000 * 5).toISOString() }
+      ],
+      firstPaymentAt: new Date(Date.now() - 86400000 * 5).toISOString(),
+      phrase: 'Toujours plus haut, toujours plus fort !'
+    },
+    'user2': {
+      id: 'user2',
+      pseudo: 'Thomas',
+      avatar: 'https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?auto=compress&cs=tinysrgb&w=150',
+      totalCents: 12500,
+      payments: [
+        { amountCents: 12500, createdAt: new Date(Date.now() - 86400000 * 7).toISOString() }
+      ],
+      firstPaymentAt: new Date(Date.now() - 86400000 * 7).toISOString(),
+      phrase: 'La fortune sourit aux audacieux'
+    },
+    'user3': {
+      id: 'user3',
+      pseudo: 'Emma',
+      avatar: 'https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?auto=compress&cs=tinysrgb&w=150',
+      totalCents: 10000,
+      payments: [
+        { amountCents: 10000, createdAt: new Date(Date.now() - 86400000 * 3).toISOString() }
+      ],
+      firstPaymentAt: new Date(Date.now() - 86400000 * 3).toISOString(),
+      phrase: 'Économiser pour mieux dépenser'
+    }
+  };
+
+  // Structure de données par défaut
+  const defaultState = {
+    users: initialUsers,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  // Charge l'état depuis localStorage
+  function loadState() {
     try {
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/leaderboard_payments?select=*`, {
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Erreur lors du chargement des paiements');
+      const currentKey = getStorageKey();
+      const storedData = localStorage.getItem(currentKey);
+      
+      if (storedData) {
+        return JSON.parse(storedData);
       }
-
-      const payments = await response.json();
-
-      // Agréger les paiements par utilisateur
-      const usersMap = {};
-
-      payments.forEach(payment => {
-        if (!usersMap[payment.user_id]) {
-          usersMap[payment.user_id] = {
-            id: payment.user_id,
-            pseudo: payment.pseudo,
-            avatar: payment.avatar,
-            phrase: payment.phrase,
-            totalCents: 0,
-            firstPaymentAt: payment.created_at,
-            payments: []
-          };
-        }
-
-        usersMap[payment.user_id].totalCents += payment.amount_cents;
-        usersMap[payment.user_id].payments.push({
-          amountCents: payment.amount_cents,
-          createdAt: payment.created_at
-        });
-
-        // Garder la date du premier paiement
-        if (new Date(payment.created_at) < new Date(usersMap[payment.user_id].firstPaymentAt)) {
-          usersMap[payment.user_id].firstPaymentAt = payment.created_at;
-        }
-      });
-
-      return { users: usersMap };
+      
+      // Vérifier si nous devons réinitialiser pour un nouveau mois
+      resetIfMonthChanged();
+      
+      return defaultState;
     } catch (error) {
-      console.error('Erreur lors du chargement des paiements:', error);
-      return { users: {} };
+      console.error('Erreur lors du chargement des données:', error);
+      return defaultState;
     }
   }
 
+  // Sauvegarde l'état dans localStorage
+  function saveState(state) {
+    try {
+      state.updatedAt = new Date().toISOString();
+      localStorage.setItem(getStorageKey(), JSON.stringify(state));
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde des données:', error);
+      showToast('Erreur lors de la sauvegarde des données', 'error');
+    }
+  }
+
+  // Ajoute un paiement pour un utilisateur
+  function addPayment(userId, amountCents) {
+    if (amountCents <= 0) {
+      throw new Error('Le montant doit être positif');
+    }
+
+    const state = loadState();
+    
+    // Si l'utilisateur n'existe pas, le créer
+    if (!state.users[userId]) {
+      const currentUser = CurrentUser.loadUser();
+      state.users[userId] = {
+        id: userId,
+        pseudo: currentUser.pseudo,
+        avatar: currentUser.avatar,
+        phrase: currentUser.phrase,
+        totalCents: 0,
+        payments: [],
+        firstPaymentAt: new Date().toISOString()
+      };
+    }
+    
+    // Ajouter le paiement
+    state.users[userId].payments.push({
+      amountCents,
+      createdAt: new Date().toISOString()
+    });
+    
+    // Mettre à jour le total
+    state.users[userId].totalCents += amountCents;
+    
+    saveState(state);
+    return state;
+  }
+
   // Récupère le top 3 des utilisateurs
-  async function getTop3() {
-    const state = await loadPayments();
+  function getTop3() {
+    const state = loadState();
     return getSortedUsers(state).slice(0, 3);
   }
 
   // Récupère le classement d'un utilisateur
-  async function getRank(userId) {
-    const state = await loadPayments();
+  function getRank(userId) {
+    const state = loadState();
     const sortedUsers = getSortedUsers(state);
     const index = sortedUsers.findIndex(user => user.id === userId);
     return index !== -1 ? index + 1 : sortedUsers.length + 1;
@@ -88,12 +152,45 @@ const Leaderboard = (function() {
       });
   }
 
+  // Réinitialise si le mois a changé
+  function resetIfMonthChanged() {
+    const currentKey = getStorageKey();
+    const keys = Object.keys(localStorage)
+      .filter(key => key.startsWith('richest:v1:season:'))
+      .sort();
+    
+    // S'il y a des saisons précédentes et que la clé actuelle n'existe pas
+    if (keys.length > 0 && !keys.includes(currentKey)) {
+      // Créer une nouvelle saison
+      saveState(defaultState);
+      return true;
+    }
+    
+    return false;
+  }
+
+  // Met à jour les informations d'un utilisateur
+  function updateUserInfo(userId) {
+    const state = loadState();
+    if (state.users[userId]) {
+      const currentUser = CurrentUser.loadUser();
+      state.users[userId].pseudo = currentUser.pseudo;
+      state.users[userId].avatar = currentUser.avatar;
+      state.users[userId].phrase = currentUser.phrase;
+      saveState(state);
+    }
+  }
+
   // API publique
   return {
-    loadPayments,
+    loadState,
+    saveState,
+    addPayment,
     getTop3,
     getRank,
-    getSortedUsers
+    resetIfMonthChanged,
+    getSortedUsers,
+    updateUserInfo
   };
 })();
 
@@ -177,30 +274,33 @@ function showToast(message, type = 'success') {
 }
 
 // Rendu de l'interface
-async function renderLeaderboard() {
+function renderLeaderboard() {
   const leaderboardEl = document.getElementById('leaderboard');
   const myCardContainer = document.getElementById('my-card-container');
-
+  
   // Vider les conteneurs
   leaderboardEl.innerHTML = '';
   myCardContainer.innerHTML = '';
-
+  
   // Récupérer les données
-  const top3 = await Leaderboard.getTop3();
+  const top3 = Leaderboard.getTop3();
   const currentUser = CurrentUser.loadUser();
-  const myRank = await Leaderboard.getRank(currentUser.id);
-
+  const myRank = Leaderboard.getRank(currentUser.id);
+  
   // Récupérer les données de l'utilisateur courant
-  const state = await Leaderboard.loadPayments();
+  const state = Leaderboard.loadState();
   const myData = state.users[currentUser.id] || { totalCents: 0, phrase: currentUser.phrase };
-
+  
+  // Mettre à jour les informations de l'utilisateur dans le classement
+  Leaderboard.updateUserInfo(currentUser.id);
+  
   // Générer les cartes du top 3
   top3.forEach((user, index) => {
     const isCurrentUser = user.id === currentUser.id;
     const card = createUserCard(user, index + 1, isCurrentUser);
     leaderboardEl.appendChild(card);
   });
-
+  
   // Générer la carte de l'utilisateur courant si pas dans le top 3
   const isInTop3 = top3.some(user => user.id === currentUser.id);
   if (!isInTop3) {
@@ -213,16 +313,16 @@ async function renderLeaderboard() {
     }, myRank, true);
     myCardContainer.appendChild(myCard);
   }
-
+  
   // Ajouter le bouton de paiement
   const payButtonContainer = document.createElement('div');
   payButtonContainer.className = 'pay-button-container';
-
+  
   const payButton = document.createElement('button');
   payButton.className = 'btn btn-primary pay-button';
   payButton.textContent = 'Payer';
   payButton.addEventListener('click', openPaymentModal);
-
+  
   payButtonContainer.appendChild(payButton);
   myCardContainer.appendChild(payButtonContainer);
 }
@@ -292,65 +392,42 @@ function closePaymentModal() {
   modal.style.display = 'none';
 }
 
-async function handlePayment() {
+function handlePayment() {
   const amountInput = document.getElementById('payment-amount');
   const amountValue = parseFloat(amountInput.value);
-
+  
   if (isNaN(amountValue) || amountValue <= 0) {
     showToast('Veuillez entrer un montant valide', 'error');
     return;
   }
-
+  
   try {
     const amountCents = Math.round(amountValue * 100);
     const currentUser = CurrentUser.loadUser();
-
+    
+    Leaderboard.addPayment(currentUser.id, amountCents);
     closePaymentModal();
-    showToast('Redirection vers le paiement...');
-
-    const supabaseUrl = 'https://0ec90b57d6e95fcbda19832f.supabase.co';
-    const response = await fetch(`${supabaseUrl}/functions/v1/richest-checkout`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        amount: amountCents,
-        user_id: currentUser.id,
-        pseudo: currentUser.pseudo,
-        avatar: currentUser.avatar,
-        phrase: currentUser.phrase,
-        success_url: window.location.origin + '/',
-        cancel_url: window.location.origin + '/',
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Erreur lors de la création de la session de paiement');
-    }
-
-    const { url } = await response.json();
-
-    if (url) {
-      window.location.href = url;
-    } else {
-      throw new Error('URL de paiement non reçue');
-    }
+    renderLeaderboard();
+    
+    showToast(`Paiement de ${euro(amountCents)} ajouté avec succès`);
   } catch (error) {
-    console.error('Payment error:', error);
     showToast(error.message, 'error');
   }
 }
 
 // Initialisation
-document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener('DOMContentLoaded', function() {
+  // Vérifier si un nouveau mois a commencé
+  if (Leaderboard.resetIfMonthChanged()) {
+    showToast('Nouvelle saison commencée ! Les compteurs ont été réinitialisés.');
+  }
+  
   // Charger l'utilisateur courant
   CurrentUser.loadUser();
-
+  
   // Afficher le classement
-  await renderLeaderboard();
-
+  renderLeaderboard();
+  
   // Événements du modal de paiement
   document.getElementById('confirm-payment').addEventListener('click', handlePayment);
   document.getElementById('cancel-payment').addEventListener('click', closePaymentModal);
@@ -359,5 +436,13 @@ document.addEventListener('DOMContentLoaded', async function() {
   });
 });
 
+// Fonction utilitaire pour obtenir la clé de stockage actuelle
+function getStorageKey() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  return `richest:v1:season:${year}-${month}`;
+}
+
 // Exporter les fonctions pour les rendre accessibles aux autres modules
-export { Leaderboard, CurrentUser, showToast, euro, openPaymentModal, closePaymentModal };
+export { Leaderboard, CurrentUser, showToast, euro, getStorageKey, openPaymentModal, closePaymentModal };
