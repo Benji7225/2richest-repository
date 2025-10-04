@@ -21,8 +21,11 @@ const app = document.querySelector('#app')
 
 // Initialize app
 async function init() {
-  // Load Stripe
-  stripe = await loadStripe(stripePublishableKey)
+  // Load Stripe if key is available
+  if (stripePublishableKey) {
+    stripe = await loadStripe(stripePublishableKey)
+  }
+
   // Check if user is logged in
   const { data: { user } } = await supabase.auth.getUser()
   currentUser = user
@@ -361,9 +364,13 @@ async function handlePurchase(priceId, mode) {
   }
   
   const { sessionId } = await response.json()
-  
+
+  if (!stripe) {
+    throw new Error('Stripe is not initialized')
+  }
+
   const { error } = await stripe.redirectToCheckout({ sessionId })
-  
+
   if (error) {
     throw error
   }
