@@ -247,7 +247,7 @@ h1 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #00c852;
+  color: #ffffff;
 }
 
 .btn-primary {
@@ -256,7 +256,7 @@ h1 {
 }
 
 .btn-primary:hover {
-  background-color: #ffffff;
+  background-color: #00c852;;
   transform: translateY(-2px);
 }
 
