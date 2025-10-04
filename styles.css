@@ -231,7 +231,7 @@ h1 {
 }
 
 .pay-button:hover {
-  background: #00d85a;
+  color: #00c852;
   transform: scale(1.05);
 }
 
