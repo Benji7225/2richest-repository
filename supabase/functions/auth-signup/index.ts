@@ -7,11 +7,17 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 );
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': '*',
-};
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get('origin') ?? '*';
+  const requestedHeaders = req.headers.get('access-control-request-headers')
+    ?? 'authorization, x-client-info, apikey, content-type';
+  return {
+    'Access-Control-Allow-Origin': origin === 'null' ? '*' : origin,
+    'Vary': 'Origin',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': requestedHeaders,
+  } as Record<string, string>;
+}
 
 async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -30,8 +36,8 @@ function generateToken(): string {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
-      status: 200,
-      headers: corsHeaders,
+      status: 204,
+      headers: getCorsHeaders(req),
     });
   }
 
@@ -41,7 +47,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Method not allowed' }),
         {
           status: 405,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
         }
       );
     }
@@ -53,7 +59,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Email, password, and pseudo are required' }),
         {
           status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
         }
       );
     }
@@ -70,7 +76,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'User already exists' }),
         {
           status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
         }
       );
     }
@@ -95,7 +101,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Failed to create user' }),
         {
           status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
         }
       );
     }
@@ -119,7 +125,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Failed to create session' }),
         {
           status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
         }
       );
     }
@@ -137,7 +143,7 @@ Deno.serve(async (req) => {
       }),
       {
         status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
       }
     );
   } catch (error: any) {
@@ -146,7 +152,7 @@ Deno.serve(async (req) => {
       JSON.stringify({ error: error.message }),
       {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
       }
     );
   }

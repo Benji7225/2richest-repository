@@ -7,6 +7,7 @@
 
 const SUPABASE_URL = 'https://0ec90b57d6e95fcbda19832f.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJib2x0IiwicmVmIjoiMGVjOTBiNTdkNmU5NWZjYmRhMTk4MzJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4ODE1NzQsImV4cCI6MTc1ODg4MTU3NH0.9I8-U0x86Ak8t2DGaIk0HfvTSLsAyzdnz-Nw00mMkKw';
+const SUPABASE_FUNCTIONS_URL = 'https://0ec90b57d6e95fcbda19832f.functions.supabase.co';
 
 // Module principal pour la gestion du classement
 const Leaderboard = (function() {
@@ -308,18 +309,35 @@ async function handlePayment() {
 
     const token = localStorage.getItem('auth_token');
 
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/richest-checkout`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        amount: amountCents,
-        user_id: currentUser.id,
-        success_url: window.location.origin + '/',
-        cancel_url: window.location.origin + '/',
-      }),
+    async function callCheckout(body) {
+      const endpoints = [
+        `${SUPABASE_FUNCTIONS_URL}/richest-checkout`,
+        `${SUPABASE_URL}/functions/v1/richest-checkout`,
+      ];
+      let lastError;
+      for (const url of endpoints) {
+        try {
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(body),
+          });
+          return res;
+        } catch (err) {
+          lastError = err;
+        }
+      }
+      throw lastError || new Error('Network error');
+    }
+
+    const response = await callCheckout({
+      amount: amountCents,
+      user_id: currentUser.id,
+      success_url: window.location.origin + '/',
+      cancel_url: window.location.origin + '/',
     });
 
     if (!response.ok) {

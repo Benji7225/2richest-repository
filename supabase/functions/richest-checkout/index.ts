@@ -15,17 +15,23 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 );
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
-};
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get('origin') ?? '*';
+  const requestedHeaders = req.headers.get('access-control-request-headers')
+    ?? 'authorization, x-client-info, apikey, content-type';
+  return {
+    'Access-Control-Allow-Origin': origin === 'null' ? '*' : origin,
+    'Vary': 'Origin',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': requestedHeaders,
+  } as Record<string, string>;
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
-      status: 200,
-      headers: corsHeaders,
+      status: 204,
+      headers: getCorsHeaders(req),
     });
   }
 
@@ -35,7 +41,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Method not allowed' }),
         {
           status: 405,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
         }
       );
     }
@@ -47,7 +53,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Missing authorization header' }),
         {
           status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
         }
       );
     }
@@ -67,7 +73,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Unauthorized' }),
         {
           status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
         }
       );
     }
@@ -79,7 +85,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Invalid amount' }),
         {
           status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
         }
       );
     }
@@ -90,7 +96,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'User ID mismatch' }),
         {
           status: 403,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
         }
       );
     }
@@ -125,7 +131,7 @@ Deno.serve(async (req) => {
       JSON.stringify({ url: stripeSession.url, sessionId: stripeSession.id }),
       {
         status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
       }
     );
   } catch (error: any) {
@@ -134,7 +140,7 @@ Deno.serve(async (req) => {
       JSON.stringify({ error: error.message }),
       {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
       }
     );
   }

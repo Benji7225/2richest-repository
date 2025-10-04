@@ -1,5 +1,32 @@
 const SUPABASE_URL = 'https://0ec90b57d6e95fcbda19832f.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJib2x0IiwicmVmIjoiMGVjOTBiNTdkNmU5NWZjYmRhMTk4MzJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4ODE1NzQsImV4cCI6MTc1ODg4MTU3NH0.9I8-U0x86Ak8t2DGaIk0HfvTSLsAyzdnz-Nw00mMkKw';
+const SUPABASE_FUNCTIONS_URL = 'https://0ec90b57d6e95fcbda19832f.functions.supabase.co';
+
+async function callAuthFunction(name, payload) {
+  const endpoints = [
+    `${SUPABASE_FUNCTIONS_URL}/${name}`,
+    `${SUPABASE_URL}/functions/v1/${name}`,
+  ];
+
+  let lastError;
+  for (const url of endpoints) {
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+      // If we got an HTTP response, return it (even if not ok, caller will parse)
+      return response;
+    } catch (err) {
+      lastError = err;
+      // Try next endpoint
+    }
+  }
+  throw lastError || new Error('Network error');
+}
 
 function showToast(message, type = 'success') {
   const toast = document.getElementById('toast');
@@ -42,15 +69,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
   const password = document.getElementById('login-password').value;
 
   try {
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/auth-login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        'apikey': SUPABASE_ANON_KEY,
-      },
-      body: JSON.stringify({ email, password }),
-    });
+    const response = await callAuthFunction('auth-login', { email, password });
 
     const data = await response.json();
 
@@ -81,15 +100,7 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
   const password = document.getElementById('signup-password').value;
 
   try {
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/auth-signup`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        'apikey': SUPABASE_ANON_KEY,
-      },
-      body: JSON.stringify({ email, password, pseudo }),
-    });
+    const response = await callAuthFunction('auth-signup', { email, password, pseudo });
 
     const data = await response.json();
 
