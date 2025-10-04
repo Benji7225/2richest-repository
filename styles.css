@@ -26,7 +26,7 @@
 
 body {
   font-family: 'Inter', sans-serif;
-  background-color: var(--background-color);
+  background-color: #000000;
   color: var(--text-color);
   min-height: 100vh;
   padding: 0;
@@ -92,8 +92,8 @@ h1 {
 
 /* Cards */
 .card {
-  background: linear-gradient(135deg, #FF9500 0%, #FF7A00 100%);
-  border-radius: 30px;
+  background: #ff751f;
+  border-radius: 100px;
   padding: 20px 24px;
   margin-bottom: 12px;
   display: flex;
@@ -109,17 +109,15 @@ h1 {
 }
 
 .card:nth-child(2) {
-  background: linear-gradient(135deg, #FF9500 0%, #FF8A00 100%);
-  opacity: 0.95;
+  background: #ff914d;
 }
 
 .card:nth-child(3) {
-  background: linear-gradient(135deg, #FF9500 0%, #FF9A00 100%);
-  opacity: 0.9;
+  background: #ffbd59;
 }
 
 .card-me {
-  background: white !important;
+  background: #ffffff !important;
   color: #000 !important;
   box-shadow: 0 4px 20px rgba(255, 255, 255, 0.1) !important;
 }
@@ -225,13 +223,13 @@ h1 {
   padding: 16px 48px;
   font-size: 20px;
   font-weight: 700;
-  border-radius: 30px;
-  background: linear-gradient(135deg, #00D084 0%, #00B870 100%);
-  box-shadow: 0 4px 20px rgba(0, 208, 132, 0.4);
+  border-radius: 100px;
+  background: #00c852;
+  box-shadow: 0 4px 20px rgba(0, 200, 82, 0.4);
 }
 
 .pay-button:hover {
-  background: linear-gradient(135deg, #00E090 0%, #00C87C 100%);
+  background: #00d85a;
   transform: scale(1.05);
 }
 
