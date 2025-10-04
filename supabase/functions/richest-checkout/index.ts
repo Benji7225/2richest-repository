@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get token from Authorization header
+    // Get user from JWT
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
@@ -53,16 +53,9 @@ Deno.serve(async (req) => {
     }
 
     const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
-    // Verify token and get user
-    const { data: session, error: sessionError } = await supabase
-      .from('sessions')
-      .select('user_id')
-      .eq('token', token)
-      .gt('expires_at', new Date().toISOString())
-      .maybeSingle();
-
-    if (sessionError || !session) {
+    if (authError || !user) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         {
@@ -72,7 +65,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { amount, user_id, success_url, cancel_url } = await req.json();
+    const { amount, success_url, cancel_url } = await req.json();
 
     if (!amount || amount <= 0) {
       return new Response(
@@ -84,18 +77,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Verify user_id matches session
-    if (user_id !== session.user_id) {
-      return new Response(
-        JSON.stringify({ error: 'User ID mismatch' }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
-    const stripeSession = await stripe.checkout.sessions.create({
+    const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
         {
@@ -114,15 +96,15 @@ Deno.serve(async (req) => {
       success_url: success_url || `${req.headers.get('origin') || 'http://localhost:5173'}/`,
       cancel_url: cancel_url || `${req.headers.get('origin') || 'http://localhost:5173'}/`,
       metadata: {
-        user_id,
+        user_id: user.id,
         amount_cents: amount.toString(),
       },
     });
 
-    console.log(`Created checkout session ${stripeSession.id} for user ${user_id}`);
+    console.log(`Created checkout session ${session.id} for user ${user.id}`);
 
     return new Response(
-      JSON.stringify({ url: stripeSession.url, sessionId: stripeSession.id }),
+      JSON.stringify({ url: session.url, sessionId: session.id }),
       {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

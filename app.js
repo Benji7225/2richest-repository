@@ -5,24 +5,30 @@
  * et affiche un classement des 3 premiers, ainsi que la position de l'utilisateur courant.
  */
 
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
 const SUPABASE_URL = 'https://0ec90b57d6e95fcbda19832f.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJib2x0IiwicmVmIjoiMGVjOTBiNTdkNmU5NWZjYmRhMTk4MzJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4ODE1NzQsImV4cCI6MTc1ODg4MTU3NH0.9I8-U0x86Ak8t2DGaIk0HfvTSLsAyzdnz-Nw00mMkKw';
 
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 // Module principal pour la gestion du classement
 const Leaderboard = (function() {
-  // Charge les paiements depuis Supabase avec les utilisateurs
+  // Charge les paiements depuis Supabase avec les profils
   async function loadPayments() {
     try {
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/leaderboard_payments?select=*,users(pseudo,avatar,phrase)`, {
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-      });
+      const { data: payments, error } = await supabase
+        .from('leaderboard_payments')
+        .select(`
+          *,
+          profiles (
+            pseudo,
+            avatar,
+            phrase
+          )
+        `);
 
-      if (!response.ok) throw new Error('Failed to load payments');
-
-      const payments = await response.json();
+      if (error) throw error;
 
       // Agréger les paiements par utilisateur
       const usersMap = {};
@@ -31,9 +37,9 @@ const Leaderboard = (function() {
         if (!usersMap[payment.user_id]) {
           usersMap[payment.user_id] = {
             id: payment.user_id,
-            pseudo: payment.users?.pseudo || 'Utilisateur',
-            avatar: payment.users?.avatar || 'https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=150',
-            phrase: payment.users?.phrase || '',
+            pseudo: payment.profiles?.pseudo || 'Utilisateur',
+            avatar: payment.profiles?.avatar || 'https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=150',
+            phrase: payment.profiles?.phrase || '',
             totalCents: 0,
             firstPaymentAt: payment.created_at,
             payments: []
@@ -99,33 +105,51 @@ const Leaderboard = (function() {
 const CurrentUser = (function() {
   let currentUser = null;
 
-  // Charge les informations de l'utilisateur depuis localStorage
+  // Charge les informations de l'utilisateur depuis Supabase
   async function loadUser() {
     try {
-      const token = localStorage.getItem('auth_token');
-      const userStr = localStorage.getItem('user');
+      const { data: { session }, error } = await supabase.auth.getSession();
 
-      if (!token || !userStr) {
+      if (error) throw error;
+
+      if (!session) {
         window.location.href = '/auth.html';
         return null;
       }
 
-      currentUser = JSON.parse(userStr);
+      // Récupérer le profil
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+
+      if (profileError) throw profileError;
+
+      currentUser = {
+        id: session.user.id,
+        email: session.user.email,
+        pseudo: profile.pseudo,
+        avatar: profile.avatar,
+        phrase: profile.phrase
+      };
+
       return currentUser;
     } catch (error) {
       console.error('Erreur lors du chargement de l\'utilisateur:', error);
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('user');
-      window.location.href = '/auth.html';
       return null;
     }
   }
 
   // Déconnexion
   async function logout() {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('user');
-    window.location.href = '/auth.html';
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      window.location.href = '/auth.html';
+    } catch (error) {
+      console.error('Erreur lors de la déconnexion:', error);
+    }
   }
 
   // Récupère l'utilisateur courant
@@ -306,13 +330,13 @@ async function handlePayment() {
     closePaymentModal();
     showToast('Redirection vers le paiement...');
 
-    const token = localStorage.getItem('auth_token');
+    const { data: { session } } = await supabase.auth.getSession();
 
     const response = await fetch(`${SUPABASE_URL}/functions/v1/richest-checkout`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        'Authorization': `Bearer ${session.access_token}`,
       },
       body: JSON.stringify({
         amount: amountCents,
