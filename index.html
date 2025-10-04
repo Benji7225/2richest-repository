@@ -8,59 +8,70 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
   <header>
     <div class="logo">
-      <svg class="flame-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-        <path d="M12 2C10 6 8 8 4 12c-2 2 0 6 4 6 2 0 3-1 4-2 1 1 2 2 4 2 4 0 6-4 4-6-4-4-6-6-8-10z" fill="#FF9500" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <svg class="flame-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2C10.9 2 9.9 2.2 8.9 2.6C9.5 3.3 9.9 4.2 9.9 5.1C9.9 7.5 7.9 9.5 5.5 9.5C4.6 9.5 3.7 9.2 3 8.6C2.6 9.6 2.4 10.7 2.4 11.7C2.4 16.8 6.7 21 11.8 21C16.9 21 21.2 16.7 21.2 11.6C21.3 6.2 17.1 2 12 2ZM10.4 16.8C9.1 16.8 8 15.7 8 14.4C8 13.3 8.7 12.4 9.7 12.1C11.5 11.6 13 10.1 13.5 8.3C13.8 9.3 14.7 10 15.8 10C17.1 10 18.2 11.1 18.2 12.4C18.2 15 14.6 16.8 10.4 16.8Z" fill="#FF9500"/>
       </svg>
       <h1>The Richest</h1>
     </div>
     <a href="account.html" class="profile-link">
-      <img id="header-avatar" class="profile-icon" src="https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=150" alt="Profil">
+      <img id="profile-avatar" class="profile-icon" src="https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=150" alt="Profil">
     </a>
   </header>
 
   <main>
-    <section id="leaderboard"></section>
-
-    <section id="my-card-container"></section>
+    <div id="leaderboard"></div>
+    <div id="my-card-container"></div>
   </main>
 
   <!-- Modal de paiement -->
   <div id="payment-modal" class="modal">
     <div class="modal-content">
-      <h2>Ajouter un paiement</h2>
-      <div class="input-group">
-        <label for="payment-amount">Montant (€)</label>
-        <input type="number" id="payment-amount" placeholder="0.00" step="0.01" min="0">
+      <h2>Effectuer un paiement</h2>
+      
+      <div class="payment-options">
+        <div class="payment-option active" data-option="custom">
+          <span class="option-label">Montant personnalisé</span>
+        </div>
+        <div class="payment-option" data-option="fixed">
+          <span class="option-label">Montant fixe</span>
+        </div>
       </div>
-      <div class="modal-actions">
-        <button id="cancel-payment" class="btn btn-secondary">Annuler</button>
-        <button id="confirm-payment" class="btn btn-primary">Confirmer</button>
+      
+      <div id="custom-payment" class="payment-panel active">
+        <div class="input-group">
+          <label for="payment-amount">Montant (€)</label>
+          <input type="number" id="payment-amount" min="1" step="0.01" placeholder="Entrez un montant">
+        </div>
+        
+        <div class="modal-actions">
+          <button id="cancel-payment" class="btn btn-secondary">Annuler</button>
+          <button id="confirm-payment" class="btn btn-primary">Payer</button>
+        </div>
+      </div>
+      
+      <div id="fixed-payment" class="payment-panel">
+        <div class="stripe-payment">
+          <div id="stripe-button-container"></div>
+          <p class="payment-info">Paiement sécurisé via Stripe</p>
+        </div>
+        
+        <div class="modal-actions">
+          <button id="cancel-fixed-payment" class="btn btn-secondary">Annuler</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Toast de notification -->
   <div id="toast" class="toast">
     <span id="toast-message"></span>
   </div>
 
   <script type="module" src="app.js"></script>
-  <script>
-    // Mettre à jour l'avatar dans le header
-    const currentUser = JSON.parse(localStorage.getItem('richest:v1:currentUser') || '{}');
-    const urlParams = new URLSearchParams(window.location.search);
-    const avatarParam = urlParams.get('avatar');
-
-    const headerAvatar = document.getElementById('header-avatar');
-    if (avatarParam) {
-      headerAvatar.src = avatarParam;
-    } else if (currentUser.avatar) {
-      headerAvatar.src = currentUser.avatar;
-    }
-  </script>
+  <script type="module" src="stripe.js"></script>
 </body>
 </html>
