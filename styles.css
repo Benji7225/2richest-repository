@@ -247,6 +247,7 @@ h1 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  color: #00c852;
 }
 
 .btn-primary {
