@@ -16,16 +16,6 @@ const CurrentUser = (function() {
     phrase: ''
   };
 
-  // Charge les informations de l'utilisateur
-  function loadUser() {
-    try {
-      // Récupérer les données stockées
-      const storedUser = JSON.parse(localStorage.getItem('richest:v1:currentUser') || '{}');
-      
-      // Fusionner les données
-      const user = {
-        ...defaultUser,
-        ...storedUser
       };
       
       return user;
