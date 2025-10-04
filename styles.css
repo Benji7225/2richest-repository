@@ -228,6 +228,7 @@ h1 {
   border-radius: 100px;
   background: #00c852;
   box-shadow: 0 4px 20px rgba(0, 200, 82, 0.4);
+  color: #00c852;
 }
 
 .pay-button:hover {
