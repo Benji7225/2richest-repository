@@ -50,11 +50,15 @@
       cursor: pointer;
       box-shadow: var(--shadow);
     }
-    
+
     .avatar-edit svg {
       width: 20px;
       height: 20px;
       fill: white;
+    }
+
+    .avatar-edit input[type="file"] {
+      display: none;
     }
     
     .form-group {
@@ -194,11 +198,12 @@
       <div class="profile-header">
         <div class="profile-avatar-container">
           <img id="profile-avatar-large" class="profile-avatar" src="https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=150" alt="Avatar">
-          <div class="avatar-edit" id="avatar-edit">
+          <label for="avatar-upload" class="avatar-edit">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
               <path d="M21.7 7.3l-5-5c-.4-.4-1-.4-1.4 0l-13 13c-.2.2-.3.4-.3.7v5c0 .6.4 1 1 1h5c.3 0 .5-.1.7-.3l13-13c.4-.4.4-1 0-1.4zM7.6 20H4v-3.6l12-12L19.6 8l-12 12z"/>
             </svg>
-          </div>
+            <input type="file" id="avatar-upload" accept="image/*">
+          </label>
         </div>
         <h2 id="profile-name">Mon Profil</h2>
       </div>
@@ -413,39 +418,25 @@
       }
     }
     
-    // Ouvrir le modal d'avatar
-    function openAvatarModal() {
-      const modal = document.getElementById('avatar-modal');
-      modal.style.display = 'flex';
-      
-      // Remplir la galerie
-      const gallery = document.getElementById('avatar-gallery');
-      gallery.innerHTML = '';
-      
-      galleryAvatars.forEach(url => {
-        const item = document.createElement('div');
-        item.className = 'gallery-item';
-        if (url === document.getElementById('profile-avatar-large').src) {
-          item.className += ' selected';
-        }
-        
-        const img = document.createElement('img');
-        img.src = url;
-        img.alt = 'Avatar';
-        
-        item.appendChild(img);
-        gallery.appendChild(item);
-        
-        item.addEventListener('click', function() {
-          // Désélectionner tous les items
-          document.querySelectorAll('.gallery-item').forEach(el => {
-            el.classList.remove('selected');
-          });
-          
-          // Sélectionner celui-ci
-          this.classList.add('selected');
-        });
-      });
+    // Gérer l'upload d'avatar
+    function handleAvatarUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      // Vérifier que c'est une image
+      if (!file.type.startsWith('image/')) {
+        showToast('Veuillez sélectionner une image', 'error');
+        return;
+      }
+
+      // Lire le fichier
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const avatarUrl = e.target.result;
+        document.getElementById('profile-avatar-large').src = avatarUrl;
+        showToast('Avatar mis à jour');
+      };
+      reader.readAsDataURL(file);
     }
     
     // Fermer le modal d'avatar
@@ -595,10 +586,8 @@
       document.getElementById('profile-form').addEventListener('submit', saveUserData);
       document.getElementById('reset-button').addEventListener('click', resetProfile);
       
-      // Événements de l'avatar
-      document.getElementById('avatar-edit').addEventListener('click', openAvatarModal);
-      document.getElementById('cancel-avatar').addEventListener('click', closeAvatarModal);
-      document.getElementById('confirm-avatar').addEventListener('click', confirmAvatar);
+      // Événement de l'avatar upload
+      document.getElementById('avatar-upload').addEventListener('change', handleAvatarUpload);
       
       // Événements des onglets
       document.querySelectorAll('.tab').forEach(tab => {
