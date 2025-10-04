@@ -1,5 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import Stripe from 'npm:stripe@17.7.0';
+import { createClient } from 'npm:@supabase/supabase-js@2.49.1';
 
 const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY')!;
 const stripe = new Stripe(stripeSecret, {
@@ -8,6 +9,11 @@ const stripe = new Stripe(stripeSecret, {
     version: '1.0.0',
   },
 });
+
+const supabase = createClient(
+  Deno.env.get('SUPABASE_URL')!,
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+);
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -34,7 +40,39 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { amount, user_id, pseudo, avatar, phrase, success_url, cancel_url } = await req.json();
+    // Get token from Authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Missing authorization header' }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+
+    // Verify token and get user
+    const { data: session, error: sessionError } = await supabase
+      .from('sessions')
+      .select('user_id')
+      .eq('token', token)
+      .gt('expires_at', new Date().toISOString())
+      .maybeSingle();
+
+    if (sessionError || !session) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    const { amount, user_id, success_url, cancel_url } = await req.json();
 
     if (!amount || amount <= 0) {
       return new Response(
@@ -46,17 +84,18 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (!user_id || !pseudo || !avatar) {
+    // Verify user_id matches session
+    if (user_id !== session.user_id) {
       return new Response(
-        JSON.stringify({ error: 'Missing user information' }),
+        JSON.stringify({ error: 'User ID mismatch' }),
         {
-          status: 400,
+          status: 403,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
     }
 
-    const session = await stripe.checkout.sessions.create({
+    const stripeSession = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
         {
@@ -76,17 +115,14 @@ Deno.serve(async (req) => {
       cancel_url: cancel_url || `${req.headers.get('origin') || 'http://localhost:5173'}/`,
       metadata: {
         user_id,
-        pseudo,
-        avatar,
-        phrase: phrase || '',
         amount_cents: amount.toString(),
       },
     });
 
-    console.log(`Created checkout session ${session.id} for user ${user_id}`);
+    console.log(`Created checkout session ${stripeSession.id} for user ${user_id}`);
 
     return new Response(
-      JSON.stringify({ url: session.url, sessionId: session.id }),
+      JSON.stringify({ url: stripeSession.url, sessionId: stripeSession.id }),
       {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

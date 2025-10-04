@@ -1,28 +1,26 @@
 /**
  * The Richest - Application de classement des plus riches
- * 
+ *
  * Cette application permet de suivre les montants payés par différents utilisateurs
  * et affiche un classement des 3 premiers, ainsi que la position de l'utilisateur courant.
  */
 
+const SUPABASE_URL = 'https://0ec90b57d6e95fcbda19832f.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJib2x0IiwicmVmIjoiMGVjOTBiNTdkNmU5NWZjYmRhMTk4MzJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4ODE1NzQsImV4cCI6MTc1ODg4MTU3NH0.9I8-U0x86Ak8t2DGaIk0HfvTSLsAyzdnz-Nw00mMkKw';
+
 // Module principal pour la gestion du classement
 const Leaderboard = (function() {
-  const SUPABASE_URL = 'https://0ec90b57d6e95fcbda19832f.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJib2x0IiwicmVmIjoiMGVjOTBiNTdkNmU5NWZjYmRhMTk4MzJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4ODE1NzQsImV4cCI6MTc1ODg4MTU3NH0.9I8-U0x86Ak8t2DGaIk0HfvTSLsAyzdnz-Nw00mMkKw';
-
-  // Charge les paiements depuis Supabase
+  // Charge les paiements depuis Supabase avec les utilisateurs
   async function loadPayments() {
     try {
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/leaderboard_payments?select=*`, {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/leaderboard_payments?select=*,users(pseudo,avatar,phrase)`, {
         headers: {
           'apikey': SUPABASE_ANON_KEY,
           'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         },
       });
 
-      if (!response.ok) {
-        throw new Error('Erreur lors du chargement des paiements');
-      }
+      if (!response.ok) throw new Error('Failed to load payments');
 
       const payments = await response.json();
 
@@ -33,9 +31,9 @@ const Leaderboard = (function() {
         if (!usersMap[payment.user_id]) {
           usersMap[payment.user_id] = {
             id: payment.user_id,
-            pseudo: payment.pseudo,
-            avatar: payment.avatar,
-            phrase: payment.phrase,
+            pseudo: payment.users?.pseudo || 'Utilisateur',
+            avatar: payment.users?.avatar || 'https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=150',
+            phrase: payment.users?.phrase || '',
             totalCents: 0,
             firstPaymentAt: payment.created_at,
             payments: []
@@ -99,54 +97,46 @@ const Leaderboard = (function() {
 
 // Module pour la gestion de l'utilisateur courant
 const CurrentUser = (function() {
-  const defaultUser = {
-    id: 'me',
-    pseudo: 'Moi',
-    avatar: 'https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=150',
-    phrase: ''
-  };
+  let currentUser = null;
 
-  // Charge les informations de l'utilisateur
-  function loadUser() {
+  // Charge les informations de l'utilisateur depuis localStorage
+  async function loadUser() {
     try {
-      // Vérifier les paramètres d'URL
-      const urlParams = new URLSearchParams(window.location.search);
-      const pseudoParam = urlParams.get('pseudo');
-      const avatarParam = urlParams.get('avatar');
-      const phraseParam = urlParams.get('phrase');
-      
-      // Récupérer les données stockées
-      const storedUser = JSON.parse(localStorage.getItem('richest:v1:currentUser') || '{}');
-      
-      // Fusionner les données
-      const user = {
-        ...defaultUser,
-        ...storedUser
-      };
-      
-      // Priorité aux paramètres d'URL
-      if (pseudoParam) user.pseudo = pseudoParam;
-      if (avatarParam) user.avatar = avatarParam;
-      if (phraseParam) user.phrase = phraseParam;
-      
-      // Sauvegarder les modifications
-      saveUser(user);
-      
-      return user;
+      const token = localStorage.getItem('auth_token');
+      const userStr = localStorage.getItem('user');
+
+      if (!token || !userStr) {
+        window.location.href = '/auth.html';
+        return null;
+      }
+
+      currentUser = JSON.parse(userStr);
+      return currentUser;
     } catch (error) {
       console.error('Erreur lors du chargement de l\'utilisateur:', error);
-      return defaultUser;
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('user');
+      window.location.href = '/auth.html';
+      return null;
     }
   }
 
-  // Sauvegarde les informations de l'utilisateur
-  function saveUser(user) {
-    localStorage.setItem('richest:v1:currentUser', JSON.stringify(user));
+  // Déconnexion
+  async function logout() {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user');
+    window.location.href = '/auth.html';
+  }
+
+  // Récupère l'utilisateur courant
+  function getUser() {
+    return currentUser;
   }
 
   return {
     loadUser,
-    saveUser
+    logout,
+    getUser
   };
 })();
 
@@ -187,7 +177,10 @@ async function renderLeaderboard() {
 
   // Récupérer les données
   const top3 = await Leaderboard.getTop3();
-  const currentUser = CurrentUser.loadUser();
+  const currentUser = CurrentUser.getUser();
+
+  if (!currentUser) return;
+
   const myRank = await Leaderboard.getRank(currentUser.id);
 
   // Récupérer les données de l'utilisateur courant
@@ -303,23 +296,27 @@ async function handlePayment() {
 
   try {
     const amountCents = Math.round(amountValue * 100);
-    const currentUser = CurrentUser.loadUser();
+    const currentUser = CurrentUser.getUser();
+
+    if (!currentUser) {
+      showToast('Vous devez être connecté', 'error');
+      return;
+    }
 
     closePaymentModal();
     showToast('Redirection vers le paiement...');
 
-    const supabaseUrl = 'https://0ec90b57d6e95fcbda19832f.supabase.co';
-    const response = await fetch(`${supabaseUrl}/functions/v1/richest-checkout`, {
+    const token = localStorage.getItem('auth_token');
+
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/richest-checkout`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({
         amount: amountCents,
         user_id: currentUser.id,
-        pseudo: currentUser.pseudo,
-        avatar: currentUser.avatar,
-        phrase: currentUser.phrase,
         success_url: window.location.origin + '/',
         cancel_url: window.location.origin + '/',
       }),
@@ -346,7 +343,15 @@ async function handlePayment() {
 // Initialisation
 document.addEventListener('DOMContentLoaded', async function() {
   // Charger l'utilisateur courant
-  CurrentUser.loadUser();
+  const user = await CurrentUser.loadUser();
+
+  if (!user) return;
+
+  // Mettre à jour l'avatar dans le header
+  const headerAvatar = document.getElementById('header-avatar');
+  if (headerAvatar && user.avatar) {
+    headerAvatar.src = user.avatar;
+  }
 
   // Afficher le classement
   await renderLeaderboard();
