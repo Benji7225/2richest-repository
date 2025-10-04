@@ -226,13 +226,13 @@ h1 {
   font-size: 20px;
   font-weight: 700;
   border-radius: 100px;
-  background: #00c852;
+  background: #00c852; /* Fond vert */
   box-shadow: 0 4px 20px rgba(0, 200, 82, 0.4);
-  color: #00c852;
+  color: #ffffff; /* Texte blanc */
 }
 
 .pay-button:hover {
-  color: #ffffff;
+  color: #ffffff; /* Texte reste blanc au survol */
   transform: scale(1.05);
 }
 
