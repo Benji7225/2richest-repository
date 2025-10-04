@@ -1,7 +1,7 @@
 import './style.css'
 import { createClient } from '@supabase/supabase-js'
 import { loadStripe } from '@stripe/stripe-js'
-import { stripeProducts } from './stripe-config.js'
+import { stripeProducts } from './stripe-config.ts'
 
 // Initialize Supabase client
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
@@ -10,7 +10,7 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // Initialize Stripe
 const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
-const stripe = await loadStripe(stripePublishableKey)
+let stripe = null
 
 // App state
 let currentUser = null
@@ -21,6 +21,8 @@ const app = document.querySelector('#app')
 
 // Initialize app
 async function init() {
+  // Load Stripe
+  stripe = await loadStripe(stripePublishableKey)
   // Check if user is logged in
   const { data: { user } } = await supabase.auth.getUser()
   currentUser = user
